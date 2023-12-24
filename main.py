@@ -1,6 +1,6 @@
 import pygame
 from piece import Piece
-from piece_sets import white_set, black_set, captured_pieces_black, captured_pieces_white, white_pieces, black_pieces, white_locations, black_locations, white_king_location, black_king_location, en_passant_pawns
+from piece_sets import white_set, black_set, captured_pieces_black, captured_pieces_white, white_pieces, black_pieces, white_locations, black_locations, white_king_location, black_king_location, white_en_passant_pawns, black_en_passant_pawns
 from moves import Moves
 #author of piece images: By en:User:Cburnett - File:Chess kdt45.svg, CC BY-SA 3.0, https://commons.wikimedia.org/w/index.php?curid=20363778
 
@@ -78,15 +78,10 @@ def draw_board():
     screen.blit(big_font.render(status_text[turn_step], True, 'black'), (20, 820))
 
 def draw_pieces():
-
-    if moves.in_check('white'):
+    if moves.in_check('white', white_king_location):
         pygame.draw.rect(screen, 'red', [white_king_location[0] * 100, white_king_location[1] * 100, 100, 100])
-        if moves.is_checkmate('white'):
-            print("black wins")
-    if moves.in_check('black'):
+    if moves.in_check('black', black_king_location):
         pygame.draw.rect(screen, 'red', [black_king_location[0] * 100, black_king_location[1] * 100, 100, 100])
-        if moves.is_checkmate('black'):
-            print("white wins")
     for i in range(len(white_pieces)):
         if selection == i and turn_step < 2:
             pygame.draw.rect(screen, 'light blue', [white_locations[i][0] * 100, white_locations[i][1] * 100, 100, 100])
@@ -128,7 +123,7 @@ while run:
                         turn_step = 1
                     if piece_is_pawn:
                         is_pawn = True
-                        if (white_locations[selection][0], white_locations[selection][1] - 1) in en_passant_pawns:
+                        if (white_locations[selection][0], white_locations[selection][1] - 1) in white_en_passant_pawns:
                             en_passant_piece = (white_locations[selection][0], white_locations[selection][1] - 1)
                         else:
                             en_passant_piece = False
@@ -138,17 +133,21 @@ while run:
                 if selected_cell in valid_moves and selection != 100:
                     white_locations[selection] = selected_cell
                     white_pieces[selection].location = selected_cell
+                    if white_pieces[selection].hasMoved == False:
+                        white_pieces[selection].firstMove = True
+                    else:
+                        white_pieces[selection].firstMove = False
                     white_pieces[selection].hasMoved = True
                     white_set.add(selected_cell)
                     white_set.remove(selected_piece_cell)
                     selected_piece_cell = None
                     if en_passant_piece:
-                        en_passant_pawns.remove(en_passant_piece)
+                        white_en_passant_pawns.remove(en_passant_piece)
                     #if white_pieces[selection].type == 'pawn' and (white_locations[selection][0], white_locations[selection][1] - 2) in en_passant_pawns and white_locations[selection][1] == 4:
                      #   print("does it")
                       #  en_passant_pawns.remove((white_locations[selection][0], white_locations[selection][1] - 2))
-                    if white_pieces[selection].type == 'pawn' and white_locations[selection][1] == 3 and white_pieces[selection].hasMoved:
-                        en_passant_pawns.add((white_locations[selection][0], 2))
+                    if white_pieces[selection].type == 'pawn' and white_locations[selection][1] == 3 and white_pieces[selection].firstMove:
+                        white_en_passant_pawns.add((white_locations[selection][0], 2))
                     if white_pieces[selection].type == 'king':
                         white_king_location = white_locations[selection]
                     if selected_cell in black_locations:
@@ -156,18 +155,23 @@ while run:
                         captured_pieces_black.add(black_pieces[removed_index])
                         black_set.remove(black_locations.pop(removed_index))
                         black_pieces.pop(removed_index)
-                    if selected_cell in en_passant_pawns and selected_cell[1] == 5 and is_pawn:
+                    if selected_cell in black_en_passant_pawns and selected_cell[1] == 5 and is_pawn:
                         removed_index = black_locations.index((selected_cell[0], selected_cell[1] - 1))
                         captured_pieces_black.add(black_pieces[removed_index])
                         black_set.remove(black_locations.pop(removed_index))
                         black_pieces.pop(removed_index)
-                        en_passant_pawns.remove(selected_cell)
+                        black_en_passant_pawns.remove(selected_cell)
                     #black_options = check_options(black_pieces, black_locations, 'black')
                     #white_options = check_options(white_pieces, white_locations, 'white')
-                    white_pieces[selection].hasMoved = True
+                    #white_pieces[selection].hasMoved = True
                     turn_step = 2
                     selection = 100
                     valid_moves = []
+                    if moves.is_mate('black'):
+                        if moves.in_check('black', black_king_location):
+                            print("white wins")
+                        else:
+                            print('stalemate')
             if turn_step > 1:
                 if selected_cell in black_locations:
                     selection = black_locations.index(selected_cell)
@@ -178,7 +182,7 @@ while run:
                         turn_step = 3
                     if piece_is_pawn:
                         is_pawn = True
-                        if (black_locations[selection][0], black_locations[selection][1] + 1) in en_passant_pawns:
+                        if (black_locations[selection][0], black_locations[selection][1] + 1) in black_en_passant_pawns:
                             en_passant_piece = (black_locations[selection][0], black_locations[selection][1] + 1)
                         else:
                             en_passant_piece = False
@@ -188,29 +192,33 @@ while run:
                 if selected_cell in valid_moves and selection != 100:
                     black_locations[selection] = selected_cell
                     black_pieces[selection].location = selected_cell
+                    if black_pieces[selection].hasMoved == False:
+                        black_pieces[selection].firstMove = True
+                    else:
+                        black_pieces[selection].firstMove = False
                     black_pieces[selection].hasMoved = True
                     black_set.add(selected_cell)
                     black_set.remove(selected_piece_cell)
                     selected_piece_cell = None
                     if en_passant_piece:
-                        en_passant_pawns.remove(en_passant_piece)
+                        black_en_passant_pawns.remove(en_passant_piece)
                     #if black_pieces[selection].type == 'pawn' and (black_locations[selection][0], black_locations[selection][1] + 2) in en_passant_pawns and black_locations[selection][1] == 3:
                     #    en_passant_pawns.remove((black_locations[selection][0], black_locations[selection][1] + 2))
-                    if black_pieces[selection].type == 'pawn' and black_locations[selection][1] == 4 and black_pieces[selection].hasMoved:
-                        en_passant_pawns.add((black_locations[selection][0], 5))
-                    if white_pieces[selection].type == 'king':
-                        white_king_location = white_locations[selection]
+                    if black_pieces[selection].type == 'pawn' and black_locations[selection][1] == 4 and black_pieces[selection].firstMove:
+                        black_en_passant_pawns.add((black_locations[selection][0], 5))
+                    if black_pieces[selection].type == 'king':
+                        black_king_location = black_locations[selection]
                     if selected_cell in white_locations:
                         removed_index = white_locations.index(selected_cell)
                         captured_pieces_white.add(white_pieces[removed_index])
                         white_set.remove(white_locations.pop(removed_index))
                         white_pieces.pop(removed_index)
-                    if selected_cell in en_passant_pawns and selected_cell[1] == 2 and is_pawn:
+                    if selected_cell in white_en_passant_pawns and selected_cell[1] == 2 and is_pawn:
                         removed_index = white_locations.index((selected_cell[0], selected_cell[1] + 1))
                         captured_pieces_white.add(white_pieces[removed_index])
                         white_set.remove(white_locations.pop(removed_index))
                         white_pieces.pop(removed_index)
-                        en_passant_pawns.remove(selected_cell)
+                        white_en_passant_pawns.remove(selected_cell)
                     #print('white check: ' + str(moves.in_check('white')))
                     #print('black check: ' + str(moves.in_check('black')))
                     #white_options = check_options(white_pieces, white_locations, 'white')
@@ -218,19 +226,28 @@ while run:
                     turn_step = 0
                     selection = 100
                     valid_moves = []
+                    if moves.is_mate('white'):
+                        if moves.in_check('white', white_king_location):
+                            print("black wins")
+                        else:
+                            print('stalemate')
+                    else:
+                        print('noooo')
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
             x_coord = pygame.mouse.get_pos()[0]
             y_coord = pygame.mouse.get_pos()[1]
-            selected_cell = (x_coord // 100, y_coord // 100)
-            if selected_cell in white_locations or selected_cell in black_locations:
-                if selected_cell in white_locations:
+            print('white enpassant' + str(white_en_passant_pawns))
+            print('black enpassant' + str(black_en_passant_pawns))
+            temp_selected_cell = (x_coord // 100, y_coord // 100)
+            if temp_selected_cell in white_locations or temp_selected_cell in black_locations:
+                if temp_selected_cell in white_locations:
                     current_piece_list = white_pieces
-                    selection = white_locations.index(selected_cell)
+                    selection = white_locations.index(temp_selected_cell)
                 else:
                     current_piece_list = black_pieces
-                    selection = black_locations.index(selected_cell)
+                    selection = black_locations.index(temp_selected_cell)
 
-                valid_moves = moves.get_moves(current_piece_list[selection])
-                print(valid_moves) # dont delete
+                temp_valid_moves = moves.get_moves(current_piece_list[selection])
+                print(temp_valid_moves) # dont delete
     pygame.display.flip()
 pygame.quit()
